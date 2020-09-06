@@ -46,11 +46,9 @@
 
 - Pre- and post-processing을 복잡하게 만들지 않는다.
 
-  - No superpixels, reproposals, post-hoc refinement
-
-    |   superpixels   |          proposals           |
-    | :-------------: | :--------------------------: |
-    | ![][superpixel] | ![][region_proposal_network] |
+  - No [superpixels](img/superpixel.jpeg)
+  - [region proposals](img/region_proposals.png) : selective search와 Edge boxes가 주로 사용
+  - post-hoc refinement (사후정제처리)
 
 - 학습되어있는 최근의 network의 classification 부분을 fully convolutional과 fine-tuning으로 재해석하였다.
 
@@ -176,7 +174,7 @@ This is because fully connected layers. (fixed dimensions and throw away spatial
 
 ### Fully connected layers can also be viewed as convolutions with kernels that cover their entire input regions.
 
-![](img/fcn_figure2.png)
+![](img/conv_impliementation_of_sliding_windows.png)
 
 - Faster
 
@@ -193,11 +191,17 @@ This is because fully connected layers. (fixed dimensions and throw away spatial
 
   convolution impliementation of sliding windows (OverFeat)
 
-  ![](img/conv_impliementation_of_sliding_windows.png)
-
 # 3.2. Shift-and-stitch is filter rarefaction
 
-Input shifting and output interlacing <!-- TODO ? -->
+Input shifting and output interlacing
+
+## Few years ago... Inpterpolation
+
+: 보간법
+
+![](img/Comparison_of_1D_and_2D_interpolation.svg)
+
+## OverFeat : Shift-and-stitch trick
 
 If the outputs are downsampled by $f$, the input is shifted(by left and top) $x$ pixels to the right and $y$ pixels down, once for every value below ($f^2$ times).
 
@@ -211,7 +215,239 @@ $$
 
   ![](img/input_shifting.png)
 
-<!-- reference -->
+### Shift-and-stitch trade-off
 
-[superpixel]: img/superpixel.jpeg
-[region_proposal_network]: img/region_proposal_network.png
+|                 pros.                 |                 cons.                 |
+| :-----------------------------------: | :-----------------------------------: |
+| denser w/o decreasing receptive field | can't finer scale than their original |
+
+**_Thus, FCN does not use the shift-and-stitch trick._**
+
+## FCN : Changing only the filters and layer strides of a convnet
+
+$$
+f'_{ij} = \begin{cases} f_{i/s, j/s} & \text{if } s \text{divides both } i \text{ and } j;\\0 & \text{otherwise,} \end{cases}
+$$
+
+### Why Pooling? (Decreasing subsampling)
+
+If not pooling, we don't have to reproduce.
+
+**_Trade-off_**
+
+|         without pooling          |              with pooling              |
+| :------------------------------: | :------------------------------------: |
+| Filter can see finer information | The nets have smaller receptive fields |
+
+# 3.3. Upsampling is backwards strided convolution
+
+## Bilinear interpolation
+
+reference 3.2. Interpolaration
+
+## Backward convolution (Deconvolution)
+
+**_Upsampling with factor $f$ = Convolution with stride $s = 1/f$_**
+
+Thus, end-to-end learning is possible.
+
+Moreover, deconvolutional filter could learn any effective upsampling.  
+e.g. bilinear upsampling, non-linear upsampling, etc...
+
+In this article, they find optimized upsampling layer which is in Section 4.2.
+
+# 3.4. Patchwise training is loss sampling
+
+## Sthocastic optimization
+
+Focus on Computational efficiency
+
+Patchwise training : Uniform vs. Random sample patch  
+Random sample is more efficient than uniform sampling of patches, because of reducing # of possible batches.
+
+In addition, it is loss sampling which has the effect like DropConnect mask.  
+DropConnect, dropout은 하나 또는 몇 개의 노드에 결과값이 너무 많이 의존하는 것을 방지하도록 하여 이미지 인식 성능 개선에 도움을 준다.
+
+![](img/dropout_dropconnect.png)
+
+_But, what random sample? (Gaussian? uniform? ...)_
+
+# Segmentation Architecture
+
+## Use what?
+
+1. Fine-tuning
+2. Skip architecture
+
+## What is trained
+
+1. A per-pixel multinomial logistic loss
+2. Validate with mean pixel Intersection over Union (IoU)
+3. Mean taken over all classes, including background
+
+# 4.1. From classifier
+
+## Begin by proven classification architectures
+
+### Reference networks
+
+Consider the AlexNet, VGG nets, and GoogLeNet $\rightarrow$ select VGG 16-layer net. (be equivalent to the 19-layer net on the task)  
+Only the final layer of GoogLeNet is used by loss layer. (discarding the final average pooling)
+
+### Discarding fc-layer $\rightarrow$ to convolutions
+
+Append $1\times1$ convolution with channel dimension 21 (# of PASCAL classes)  
+The predict coarse output layer followed by a deconvolution layer. (bilinear... upsampling layer)
+
+### Preliminary validation results
+
+Even the worst model achieved $\sim 75\%$  
+FCN-VGG16 already appears 56.0 mean IU
+
+![](img/sample_iou.png)
+
+# 4.2. Combining what and where
+
+### They Define FCN that combines **_feature hierarchy layers_** and **_refines the spatial precision_**.
+
+![](img/fcn_figure3.png)
+
+### Dissatisfyingly coarse output
+
+The result of deep layers is too coarse to segment images.  
+For this reason, they combine shallow layers and deep layers as can be seen by figure3.  
+It makes sense to make them from shallower net outputs.
+
+# How to make FCN
+
+## FCN architecture
+
+![](img/fcn_architecture.png)
+
+## FCN-32s
+
+Just upsample `conv7` 32x.
+
+- The stride is 32
+- Too coarse
+
+## FCN-16s
+
+1. Upsample `conv7` 2x.
+2. Add a $1\times1$ convolution layer on top of `pool4`. (to set channel same)
+3. Sum both layer. (just sum, backpropagation is easier than max fusion)
+4. Upsample 16x.
+
+- The stride is 16
+- Less coarse
+
+## FCN-8s
+
+1. Upsample `conv7` 4x.
+2. Upsample `pool4` 2x.
+3. Take `pool3` (also add a $1\times1$ convolution layer on top as `pool4`)
+4. Sum all of them
+5. Upsample 8x.
+
+- The stride is 8
+- More Less coarse
+
+## No more
+
+### why?
+
+There is not significant result.
+
+## Notice point on FCN architecture
+
+- Initialize 2x upsampling to bilinear interpolation, and allow the parameters to be learned.
+- The new params in $1\times1$ conv is initialized with zero. (the net start with unmodified prediction)
+- The learning rate is decreased by a factor of 100.
+
+## The skip net (Even FCN-16s) improves performance by 3.0 mean IU to 62.4
+
+![](img/fcn_figure4.png)
+
+Also, find a slight improvement in the smoothness and detail of the output.
+
+## Refinement by other means
+
+### Decreasing the stride of pooling layers
+
+The straight way to obtain finer predictions.  
+_Setting the `pool5` layers to have stride 1_ requires _a kernel size of $14\times14$_ in order to maintain its receptive field size.  
+Big kernel size means increasing parameters which needs much computational cost.
+
+**_The researchers fail learning such large filters._**
+
+변명 : Initialization from ImageNet-trained weights in the upper layers is important.
+
+### Shift-and-stitch trick
+
+They found that the method is worse than layer fusion.
+
+# 4.3. Experimental framework (Details)
+
+## Optimization
+
+- SGD with momentum
+- Learning rate : $10^{-3}, 10^{-4}, and 5^{-5}$ for FCN-AlexNet, FCN-VGG16, and FCN-GoogLeNet, respectively
+- Momentum : 0.9
+- Zero-initialize the class scoring convolution layer. (Random is worse perfomance and slow)
+- Dropout was included in the original classifier nets.
+
+## Fine-tuning
+
+**_Fine-Tune all layers._**  
+Fine-tuning only output part yields only $70\%$ of the full fine-tuning.
+
+1. Take 3 days for coarse FCN-32s version.
+2. Take 1 day to upgrade to the FCN-16s
+3. Take 1 day to upgrade to the FCN-8s
+
+## Patch sampling
+
+<img src="img/fcn_figure5.png" width=50%><br/>
+
+**_Use full image training_**  
+By contrast, prior works randomly sampled patches.  
+In this research, they recovered that **_random sampling does not have a significant effect on convergence rate_** compared to whole image training, but **_takes significantly more time_** due to **_the larger number of images_** that need to be considered per batch.
+
+## Class Balancing
+
+Unneccessary
+
+## Dense Prediction
+
+- Final layer deconvolutional filters are fixed to bilinear interpolation.
+- Intermediat upsampling layers are initialized to bilinear interpolation, but it can be learned.
+
+## Augmentation
+
+- Randomly mirror data
+- Jittering (?)
+
+No noticeable improvement.
+
+## More Traning Data
+
+- PASCAL VOC 2011 : 1112 images
+- Hariharan's data : 8498 PASCAL training images
+
+Improve 3.4 points to 59.4 mean IU
+
+## Implementation
+
+All models are trained and tested with **_Caffe_**
+
+<!-- conclusion for me -->
+
+<!--
+In semantic segmentation problems,
+Deep layers make coarse output, shallow layers make fine output.
+Coarse output let us know what is it. (global topic) Because it has big receptive field.
+Shallow layers let us know where is it. (details) Because it has local information.
+
+The case of deep layers, how about big size of windows?
+3X3 windows can also have big receptive field with less parameters which we sholud train. (VGG)
+-->
