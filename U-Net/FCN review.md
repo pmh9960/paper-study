@@ -36,7 +36,7 @@
 
 - 본 네트워크에 있는 upsampling layers가 subsampled하는 pooling이 있음에도, pixelwise prediction과 학습 모두 가능하게 해준다.
 
-![](img/fcn_figure1.png)
+![](fcn_imgs/fcn_figure1.png)
 
 ## Efficient
 
@@ -46,8 +46,8 @@
 
 - Pre- and post-processing을 복잡하게 만들지 않는다.
 
-  - No [superpixels](img/superpixel.jpeg)
-  - [region proposals](img/region_proposals.png) : selective search와 Edge boxes가 주로 사용
+  - No [superpixels](fcn_imgs/superpixel.jpeg)
+  - [region proposals](fcn_imgs/region_proposals.png) : selective search와 Edge boxes가 주로 사용
   - post-hoc refinement (사후정제처리)
 
 - 학습되어있는 최근의 network의 classification 부분을 fully convolutional과 fine-tuning으로 재해석하였다.
@@ -58,7 +58,7 @@
 
 Pixel 단위로 어떤 object인지 classification 하는 것.
 
-![](img/semantic_segmentation.jpg)
+![](fcn_imgs/semantic_segmentation.jpg)
 
 - Semantics vs. location 의 균형이 중요하다.
 
@@ -111,7 +111,7 @@ There are common elements.
 
 # 3. Fully convolutional network
 
-![](img/fcn_figure1.png)
+![](fcn_imgs/fcn_figure1.png)
 
 Each layer of data in a convnet : $h \times w \times d$  
 $h, w$ : spatial dimensions.  
@@ -119,13 +119,13 @@ $d$ : feature or channel dimension.
 
 - receptive field
 
-  ![](img/receptive_field.png)
+  ![](fcn_imgs/receptive_field.png)
 
 ## Convnet
 
 - Translation invariance
 
-  ![](img/translation_invariance.png)
+  ![](fcn_imgs/translation_invariance.png)
 
 - Basic components
 
@@ -174,7 +174,7 @@ This is because fully connected layers. (fixed dimensions and throw away spatial
 
 ### Fully connected layers can also be viewed as convolutions with kernels that cover their entire input regions.
 
-![](img/conv_impliementation_of_sliding_windows.png)
+![](fcn_imgs/conv_impliementation_of_sliding_windows.png)
 
 - Faster
 
@@ -199,7 +199,7 @@ Input shifting and output interlacing
 
 : 보간법
 
-![](img/Comparison_of_1D_and_2D_interpolation.svg)
+![](fcn_imgs/Comparison_of_1D_and_2D_interpolation.svg)
 
 ## OverFeat : Shift-and-stitch trick
 
@@ -213,7 +213,7 @@ $$
 
   Less diminution of resolution.
 
-  ![](img/input_shifting.png)
+  ![](fcn_imgs/input_shifting.png)
 
 ### Shift-and-stitch trade-off
 
@@ -268,7 +268,7 @@ Random sample is more efficient than uniform sampling of patches, because of red
 In addition, it is loss sampling which has the effect like DropConnect mask.  
 DropConnect, dropout은 하나 또는 몇 개의 노드에 결과값이 너무 많이 의존하는 것을 방지하도록 하여 이미지 인식 성능 개선에 도움을 준다.
 
-![](img/dropout_dropconnect.png)
+![](fcn_imgs/dropout_dropconnect.png)
 
 _But, what random sample? (Gaussian? uniform? ...)_
 
@@ -304,13 +304,13 @@ The predict coarse output layer followed by a deconvolution layer. (bilinear... 
 Even the worst model achieved $\sim 75\%$  
 FCN-VGG16 already appears 56.0 mean IU
 
-![](img/sample_iou.png)
+![](fcn_imgs/sample_iou.png)
 
 # 4.2. Combining what and where
 
 ### They Define FCN that combines **_feature hierarchy layers_** and **_refines the spatial precision_**.
 
-![](img/fcn_figure3.png)
+![](fcn_imgs/fcn_figure3.png)
 
 ### Dissatisfyingly coarse output
 
@@ -322,7 +322,7 @@ It makes sense to make them from shallower net outputs.
 
 ## FCN architecture
 
-![](img/fcn_architecture.png)
+![](fcn_imgs/fcn_architecture.png)
 
 ## FCN-32s
 
@@ -366,7 +366,7 @@ There is not significant result.
 
 ## The skip net (Even FCN-16s) improves performance by 3.0 mean IU to 62.4
 
-![](img/fcn_figure4.png)
+![](fcn_imgs/fcn_figure4.png)
 
 Also, find a slight improvement in the smoothness and detail of the output.
 
@@ -407,7 +407,7 @@ Fine-tuning only output part yields only $70\%$ of the full fine-tuning.
 
 ## Patch sampling
 
-<img src="img/fcn_figure5.png" width=50%><br/>
+<img src="fcn_imgs/fcn_figure5.png" width=50%><br/>
 
 **_Use full image training_**  
 By contrast, prior works randomly sampled patches.  
@@ -439,6 +439,90 @@ Improve 3.4 points to 59.4 mean IU
 ## Implementation
 
 All models are trained and tested with **_Caffe_**
+
+# 5. Results
+
+## Datasets <!-- TODO what are they -->
+
+1. PASCAL VOC
+2. NYUDv2
+3. SIFT
+
+## Metircs
+
+from common semantic segmentation.
+
+### Notation
+
+$n_{ij}$ : # of pixels of class $i$ predicted to belong to class $j$  
+$n_{cl}$ : # of classes  
+$t_i = \Sigma_j n_{ij}$ : the total number of pixels of class $i$
+
+### The 4 metrics
+
+1. pixel accuracy : $\Sigma_i n_{ii} / \Sigma_i t_i$
+2. mean accuracy : $(1/n_{cl}) \Sigma_i n_{ii} / t_i$
+3. mean IU : $(1/n_{cl})\Sigma_i n_{ii}/(t_i+\Sigma_j n_{ji}-n_{ii})$
+4. frequency weight IU : $(\Sigma_k t_k)^{-1} \Sigma_i t_i n_{ii}/(t_i+\Sigma_j n_{ji}-n_{ii})$
+
+## Results of PASCAL VOC
+
+![](fcn_imgs/fcn_table3.png)
+![](fcn_imgs/fcn_figure6.png)
+
+## Results of NYUDv2
+
+The images in NYUDv2 are RGB-D images. However, FCN-32s, 16s, 8s are trained with just RGB images. To add depth information, input of the model upgraded to take 4D.
+
+1. Train unmodified FCN-32s model on RGB images.
+2. Upgrade input dimension of the model and train on RGB-D images.
+
+![](fcn_imgs/fcn_table4.png)
+
+- HHA is an 3-dims encoding way which transform from RGB-D.
+- Training as _late fusion_ of RGB and HHA
+- Both nets are summed at the final layer
+- Upgrade _late fusion_ to 16 stirde version
+
+## Results of SIFT Flow
+
+SIFT Flow is a dataset of 2,688 images with pixel labes.
+
+- 33 semantic categories ("bridge", "mountain", "sun" ... )
+- 3 geometric categories ("horizontal", "vertical", and "sky")
+
+![](fcn_imgs/fcn_table5.png)
+
+- This model performs as well on both tasks as two independent trained models.
+- Learning and inference speeds are as fast as each independent models.
+
+# 6. Conclusion
+
+## Future works
+
+If combination with Multi-resolution layer, the Fully convolutional networks improves dramatically in segmentation part, while simplifying and speeding up learning and inference.
+
+# A. Upper Bounds on IU
+
+While their mean IU has great performance, there is an upper bounds on mean IU.
+
+| factor | mean IU |
+| -----: | :------ |
+|    128 | 50.9    |
+|     64 | 73.3    |
+|     32 | 86.1    |
+|     16 | 92.8    |
+|      8 | 96.4    |
+|      4 | 98.5    |
+
+This result is predicted by downsampling ground truth images and then upsampling them again.  
+Conversely, mean IU is not a good measure of fine-scale accuracy.
+
+# B. More results
+
+While PASCAL-Context provides whole scene annotations of PASCAL VOC 2010, and there are over 400 distinct classes. Thus, the researchers do same thing on new dataset.  
+In more results part, they experiment 59 classes dataset.  
+They train and evaluate. The result is table6.
 
 <!-- conclusion for me -->
 
