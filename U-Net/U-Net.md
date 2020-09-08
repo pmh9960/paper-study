@@ -41,7 +41,69 @@ Obviously, the strategy in Ciresan et al. has two drawbacks
 
 # U-Net
 
+## Fully Convolutional Network
+
 U-Net is built upon **_Fully Convolutional Network._**  
-It is modified and extended for the works with very few training images and yield more precise segmentations.
+It is modified and extended for the works with very few training images and yield more precise segmentations.  
+The main idea in FCN is upsampling layers which make contracted images to precise images.
+
+## Upsampling part
+
+### A large number of feature channels.
+
+A large number of feature channels allow the network to propagate context information to higher resolution layers.  
+As a result, the upsampling path is almost symmetric to the contracting path, and yield a u-shaped architecture.
 
 ![](unet_imgs/unet_figure1.png)
+
+## Overlap-tile strategy
+
+Overlap-tile strategy allows the seamless segmentation of arbitrarily large images.
+
+![](unet_imgs/unet_figure2.png)
+
+To predict the pixels in the border region of image, the missing context is extrapolated by mirroring tha input image.  
+Tiling strategy applys the network to large images, and also images' resolution is not limited by the GPU memory.
+
+## Data augmentation
+
+If there is very little training data, data augmentation is important.  
+They apply elastic defromations to training images.  
+Elastic deformation is important in biomedical segmentation, because the tissue is well distorted.  
+Dosovitskiy et al. suppose that the data augmentation help to learn invariance of data.
+
+## Separation of touching objects of the same class
+
+Use of a weight loss, where the separating background labels between touching cells obtain a large weight in the loss function.
+
+### This network is applicable to various biomedical segmentation problems
+
+# 2. Network Architecture
+
+U-Net consists of a contracting path, expansive path, and $1\times1$ convolution.  
+In total, the network has 23 convolutional layers.
+
+## Contracting path
+
+1. Two $3\times3$ convolutions. (unpadded convolutions, followed by ReLU)  
+   Unpadding with mirroring input image is better option than zero-padding, I think.
+2. $2\times2$ max pooling (stride: 2, double the number of feature)
+
+## Expansive path
+
+1. Up-convolution ($2\times2$ convolution, halves the number of feature channels)
+2. Concatenation with the correspondingly cropped feature map from contracting path. (cropping is necessary, because unpadding has loss of border pixels)
+3. Two $3\times3$ convolutions. (unpadded convolutions, followed by ReLU)
+
+## $1\times1$ convolution
+
+The final layer of U-Net.  
+The first layer use 64-feature map, but the desired number of classes is not 64.  
+$1\times1$ convolution can change the number of feature map simply.
+
+_What is the correation between the number of channel in first layer and the real number of classes which we desire._
+
+**_To allow a seamless tiling of the output segmentation map, selecting the input tile size is important._**  
+e.g. $2\times2$ max-pooling operations are applied to a layer with an even x- and y-size.
+
+_Does U-Net patches are seamless while they use patchwise convolution?_
