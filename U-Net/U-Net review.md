@@ -101,9 +101,102 @@ The final layer of U-Net.
 The first layer use 64-feature map, but the desired number of classes is not 64.  
 $1\times1$ convolution can change the number of feature map simply.
 
-_What is the correation between the number of channel in first layer and the real number of classes which we desire._
+_What is the correation between the number of channel in first layer and the real number of classes which we desire._ <!-- TODO ? -->
 
 **_To allow a seamless tiling of the output segmentation map, selecting the input tile size is important._**  
 e.g. $2\times2$ max-pooling operations are applied to a layer with an even x- and y-size.
 
-_Does U-Net patches are seamless while they use patchwise convolution?_
+_Does U-Net patches are seamless while they use patchwise convolution?_ <!-- TODO ? -->
+
+# 3. Training
+
+Train with stochastic gradient descent(SGD), implementation of Caffe.
+
+## Input tiles
+
+Favor large **_input tiles_** over a large batch size.
+
+1. Make maximum use of GPU memory.
+2. Minimize the overhead.  
+   The output image is smaller than input **_by a constant border width._** (unpadding)
+
+   | name          |    change    |
+   | :------------ | :----------: |
+   | tile size     | $\downarrow$ |
+   | remove border |     $-$      |
+   | remain ration | $\downarrow$ |
+   | overhead      |  $\uparrow$  |
+
+3. However, reduce the batch to a single image.
+4. Accordingly, use high momentum (0.99, small mini-batch needs high momentum)
+
+## Energy function
+
+$$
+E = \sum_{{\bf x}\in\Omega} w({\bf x})\log(p_{l({\bf x})} ({\bf x}))
+$$
+
+$p_k ({\bf x}) = {\text {exp}}(a_k ({\bf x})) / (\sum_{k'=1}^{K} {\text {exp}}(a_{k'} ({\bf x}))$ : pixel-wise soft-max over the final feature map  
+$a_k({\bf x})$ : activation  
+$k$ : feature channel  
+${\bf x} \in \Omega$ : pixel position ($\Omega \subset \mathbb{Z} ^2$)  
+$l : \Omega \rightarrow \{1,...,K\}$ : true label of each pixel  
+$w : \Omega \rightarrow \mathbb{R}$ : a weight map to force the network to learn small separation borders.
+
+$$
+w({\bf x}) = w_c ({\bf x}) + w_0 \cdot {\text {exp}}(- {{(d_1({\bf x}) + d_2({\bf x}))^2} \over {2\sigma^2}})
+$$
+
+$w_c : \Omega \rightarrow \mathbb{R}$ : balance the class frequencies **_(why do we have to balance?)_**  
+$d_1 : \Omega \rightarrow \mathbb{R}$ : distance to the border of the nearest cell  
+$d_2 : \Omega \rightarrow \mathbb{R}$ : distance to the border of the second nearest cell  
+Set constants : $w_0 = 10, \sigma \approx 5 \text{ pixels}$
+
+If cells are touching, the weight function have large weight.  
+It means finding background in touching cells region is important for loss function.
+
+## Initialization
+
+In deep networks, a good initialization of the weights is extremely important.  
+Otherwise, parts of the network might give excessive activations, while other parts never contribute.
+
+In this architecture, use Gaussian distribution with a standard deviation of $\sqrt{2/N}$.  
+$N$ : the number of incoming nodes of one neuron. (e.g. 3x3 conv, 64 channels : $N = 9 \cdot 64 = 576$)
+
+# 3.1. Data Augmentation
+
+## Purpose
+
+To teach the network the desired invariance and robustness properties. (when only few training samples are available)
+
+## Type of data augmentation
+
+1. Shift and rotation
+2. Gray value variations
+3. **_Random elastic deformations_**
+4. Smooth deformations using random displacement vactors on a coarse 3x3 grid. (generated, per-pixel displacements are computed using bicubic interpolation)
+5. Drop-out layers (end of the contractiong path, implicit data augmentation)
+
+# 4. Experiments
+
+There are 3 different segmentation applications of the U-Net.
+
+## Segmentation of neuronal structures in electron microscopic(EM) recordings
+
+Data : EM segmentation challenge, set of 30 images (512x512) of the Drosophila(초파리) first instar larva (성장 단계 중 하나 ?) ventral nerve cord(VNC, 복부 신경 코드)  
+Tasks : Segmetation of cells(white) and membranes(black)  
+Metrics : [Warping error](https://imagej.net/Topology_preserving_warping_error), [Rand error](https://imagej.net/Rand_error), [Pixel error](https://imagej.net/Topology_preserving_warping_error.html#Pixel_error)
+
+**_U-Net got a good result for this tasks._**
+
+## Cell segmentation task in light microscopic images
+
+ISBI cell tracking challenge 2014 and 2015  
+Matircs : Average IoU (Intersection over Union)
+Also got a good result for PhC-U373, DIC-HeLa.
+
+# 5. Conclusion
+
+The U-Net architecture achieves very good performance on very different biomedical segmentation applications.  
+Notice that the data augmentation with elastic deformation is important of training.  
+U-Net has only 10 hours on a NVidia Titan GPU(6GB), Caffe-based.
