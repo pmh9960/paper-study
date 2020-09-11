@@ -1,171 +1,208 @@
-<!-- mathjax -->
-<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML'></script>
-
-# Fully Convolutional Networks for Semantic Segmentation review
+# Fully Convolutional Networks for Semantic Segmentation
 
 # Abstract
 
 - Convolutional networks는 feature hierarchies를 산출하는데 탁월한 능력을 가진 모델이다.
-- Semantic segmentation에서 가장 좋은 결과를 보여주는 end-to-end, pixels-to-pixels로 훈련된 모델을 보여준다.
-- Fully convolutional은 입력값으로 임의의 크기(input of arbitrary)를 가질 수 있고, 이에 따라서 연관된 크기의 출력물(correspondingly-sized output)을 출력하는 장점이 있다. (Semantic segmentation에서 강점)
-  > 기존 분류 네트워크들은 입력 사이즈가 고정되어 있었다.
-- 현대의 분류 네트워크들(AlexNet, VGG net, GoogLeNet)등을 fully convolutional network로 적용시킨 후에 fine-tuning을 통해 semantic segmentation에 적합하도록 transfer learning을 진행하였다.
-- 본 네트워크의 구조는 다음과 같다. Semantic information은 deep, coarse한 layer에서 추출하였고, appearance information은 shallow, fine한 layer에서 추출하므로써 정확하고 세부적인 segmentation을 구성하였다.
-- PASCAL VOC, NYUDv2, SIFT Flow등에서 좋은 성능을 보여주었고, 추론에 걸리는 시간은 1/50초 이하이다.
+- 본 논문의 모델은 [Semantic segmentation](#semantic-segmentation) 가장 좋은 결과를 보여주며, **_end-to-end, pixels-to-pixels_**로 훈련하였다.
+- **_Fully Convolutional Networs_**
+  > Fully Convolutional Networks는 입력값으로 임의의 크기(input of arbitrary)를 가질 수 있고, 이에 따라서 연관된 크기의 출력물(correspondingly-sized output)을 출력하는 장점이 있다. (Semantic segmentation에서 강점)  
+  > $\Leftrightarrow$ 기존 분류 네트워크들은 입력 사이즈가 고정되어 있었다.
+- 현대의 Classification Networks(AlexNet, VGG net, GoogLeNet)를 Fully Convolutional Network로 적용시킨 후에 semantic segmentation에 적합하도록 세부적인 부분을 fine-tune 하는 transfer learning 방식으로 진행하였다.
+  > Contemporary classification networks : pre-trained models (pre-training) <!-- 사전에 학습되는 모델 -->  
+  > Fully Convoutional Network : fine-tuned model <!-- 이를 활용하여 새로운 모델을 학습하는 과정 -->
+- 본 네트워크의 특별한 구조.
+  > Semantic information은 deep, coarse한 layer에서 추출.  
+  > Appearance information은 shallow, fine한 layer에서 추출.  
+  > $\Rightarrow$ 정확하고 세부적인 segmentation을 구성하였다.
+- PASCAL VOC, NYUDv2, SIFT Flow의 Dataset에서 좋은 성능을 보여주었고, 추론에 걸리는 시간은 1/5초 이하이다.
 
 # 1. Introduction
 
-## Compare with prior networks
+## Convolutional Networks
 
-- Convolutional Networks는 1)whole-image classification과 2)local tasks with structured output(ex. object detection) 모두에서 좋은 성능을 보인다.
+### Performance
 
-- 위 두 작업의 다음 단계는 pixel 별로 prediction하는 semantic segmentation이다.
+Fully Convolutional Network improve for the two tasks below.
 
-- 기존에도 semantic segmentation을 위해서 convnets을 이용하려는 연구가 있었다. 하지만 ...
+1. Whole-image classification
+   1. Cat or dog
+2. Local tasks with structed output
+   1. bounding box object detection
+   2. part and keypoint prediction
+   3. local correspondence
+   <!-- TODO What are they? -->
 
-  - <!-- 단점 -->
+**_Why convnets work? (reference VGG-16)_**
 
-- FCN은 추가적인 기계 요소 없이 보다 발전되었다.
+[VGG16 review](VGG16%20review%20review.md)
 
-- 최초로 end-to-end로 학습한...
+## The next task, **_Coarse to fine_**
 
-  1. Pixelwise prediction
-  1. Supervised pre-training
-
-- 학습과 추론 모두 전체 사진을 한 번에 계산하였다. (by dense feedforward computation(?))
-
-- 본 네트워크에 있는 upsampling layers가 subsampled하는 pooling이 있음에도, pixelwise prediction과 학습 모두 가능하게 해준다.
-
-![](fcn_imgs/fcn_figure1.png)
-
-## Efficient
-
-- Asymptotically efficient and absolutely efficient <!-- TODO ? -->
-
-- No patchwise training
-
-- Pre- and post-processing을 복잡하게 만들지 않는다.
-
-  - No [superpixels](fcn_imgs/superpixel.jpeg)
-  - [region proposals](fcn_imgs/region_proposals.png) : selective search와 Edge boxes가 주로 사용
-  - post-hoc refinement (사후정제처리)
-
-- 학습되어있는 최근의 network의 classification 부분을 fully convolutional과 fine-tuning으로 재해석하였다.
-
-  - 기존 연구들은 작은 convnet에서 학습되어있지 않은 상태로 진행하였다.
-
-## Semantic segmentation
+### Semantic segmentation
 
 Pixel 단위로 어떤 object인지 classification 하는 것.
 
 ![](fcn_imgs/semantic_segmentation.jpg)
 
-- Semantics vs. location 의 균형이 중요하다.
+### **_Semantics vs. Location_** 의 균형이 중요하다.
 
-  What vs. where
+[What vs. Where](#skip-architecture)
 
-- Skip architecture
+## Fully Convolutional Networks
 
-  deep, coarse semantic info.와 shallow, fine, appearance info를 섞어 쓸 수 있게 해주었다.
+이름 그대로 처음부터 끝까지 convolutional layer만을 사용.  
+특히, classification part를 fully connected layer에서 convolutional layer로 변경.
 
-- Architecture design vs. Dense prediction tradeoff
+### Compare with prior networks
+
+기존에도 semantic segmentation을 위해서 convnets을 이용하려는 연구가 있었다. 하지만 ...  
+(구체적인 단점은 나와있지 않음. 아마도 성능 문제)
+
+**_FCN은 추가적인 machinery 요소 없이 state-of-the-art로 넘어섰다._**  
+기타 자잘한 잡기술이 아닌 큰 변화를 통한 발전이라는 뜻으로 해석.
+
+### The first End-to-end training...
+
+1. Pixelwise prediction
+2. From supervised pre-training
+
+### Advantage
+
+1. Input size가 자유롭다.
+2. 학습과 추론 모두 전체 사진을 한 번에 계산하였다. (by [dense feedforward computation](#fully-connected-layers-can-also-be-viewed-as-convolutions-with-kernels-that-cover-their-entire-input-regions))
+3. 본 네트워크에 있는 upsampling layers가 subsampled하는 pooling이 있음에도, pixelwise prediction과 학습 모두 가능하게 해준다.
+4. Efficiency <!-- TODO for what? -->  
+   For what ? Train ? Inference ? Build architecture ?
+   1. [Asymptotically efficient](<https://en.wikipedia.org/wiki/Efficiency_(statistics)#Asymptotic_efficiency>) and absolutely efficient (정확한 뜻은 모르겠다.) <!-- Asymtotically : N이 커진다던지 무언가 변화가 있을 것임. 이 때 이 변화에 따라서 서서히 최적의 값으로 접근한다면 해당된다.  -->
+   2. No patchwise training
+   3. Pre- and post-processing을 복잡하게 만들지 않는다.
+      1. No [superpixels](fcn_imgs/superpixel.jpeg)
+      2. [region proposals](fcn_imgs/region_proposals.png) : selective search와 Edge boxes가 주로 사용
+      3. post-hoc refinement (사후정제처리)
+   4. 학습되어있는 최근의 network의 classification 부분을 fully convolutional과 fine-tuning으로 재해석하였다.
+      > 기존 연구들은 작은 convnet에서 학습되어있지 않은 상태로 진행하였다.
+
+### Skip architecture
+
+Deep, coarse semantic information과 shallow, fine, appearance information이 섞인 결과를 낼 수 있었다.  
+Architecture design vs. Dense prediction tradeoff  
+**_What vs. Where_**
 
 # 2. Related work
 
-## Fully convolutional network
+## Prior Fully Convolutional Networks
 
-- Draw on recent successes of depp nets for image classification
-- Matan : extending a convnet to arbitrary-sized input idea (1D)
-- Wolf and Platt : expand convnet outputs to 2D
-- Ning : define a convnet for coarse multiclass segmentation
+- Matan : Extending a convnet to arbitrary-sized input idea (1D)
+- Wolf and Platt : Expand convnet outputs to 2D
+- Ning : Define a convnet for coarse multiclass segmentation
 - Sermanet : Sliding window detection
-- Pinheiro and Collobert : semantic segmentation
-- Eigen : image restoration
-- Tompson : fully convolutional training effectively
-- He : Discard the non-conv portion of classification nets to make a feature extractor.
+- Pinheiro and Collobert : Semantic segmentation
+- Eigen : Image restoration
+- Tompson : Fully convolutional training effectively
+- He : Discard the non-conv portion of classification nets to make a feature extractor.  
   Combine (region) proposals and Spatial pyramid pooling은 국부적이고 고정된 길이의 feature를 classification을 위해 산출해낼 수 있다.
   빠르고 효율적이나 hybrid이기 떄문에 end-to-end training이 불가능하다.
 
+**_Then,_**
+
+- FCN : Draw on recent successes of deep nets for image classification and transfer learning.
+
 ## Dense prediction
 
-Pooling하면서 be subsampled, thus it is called dense. (?)
+It is called dense prediction, because pooling subsample images. <!-- TODO is it right? -->
 
-- Ning : define a convnet for coarse multiclass segmentation
-  also Farabet, Pinheiro and Collobert do
+- Ning, Farabet, Pinheiro and Collobert : Recent works have applied convnets to dense prediction problems, including semantic segmentation.
 - Ciresan : boundary prediction for electron microscopy
 - etc.
 
 There are common elements.
 
 1. Small models restricting capacity and receptive fields
-1. Patchwise training
-1. Post-processing by superpixel projection, random fieldregularization, filtering, or local classification
-1. Input shifting and output interlacing for dense output as introduced by OverFeat
-1. Multi-scale pyramid processing
-1. Saturatingtanhnonlinearities
-1. Ensembles
+2. Patchwise training
+3. Post-processing by superpixel projection, random field regularization, filtering, or local classification
+4. Input shifting and output interlacing for dense output as introduced by OverFeat
+5. Multi-scale pyramid processing
+6. Saturatingtanhnonlinearities
+7. Ensembles
 
-**_FCN DOES WITHOUT THIS MACHINERY_**
+**_In summary, the exist methods are not learned end-to-end._**  
+**_FCN DOES WITHOUT THIS MACHINERY_** (in fact, their ideas are used as FCN perspective)
 
-### In summary, the exist methods are not learned end-to-end.
+# 3. Fully Convolutional Network
 
-# 3. Fully convolutional network
+## The whole architecture
 
-![](fcn_imgs/fcn_figure1.png)
+![](fcn_imgs/fcn_figure1_modified.jpg)
 
-Each layer of data in a convnet : $h \times w \times d$  
+### Notation
+
+Each layer of data in a convnet : $h\times w\times d$  
 $h, w$ : spatial dimensions.  
 $d$ : feature or channel dimension.
 
-- receptive field
+1. Feature extraction with trained classifier(e.g. VGG16)
+2. Feature-level classification (it was fc-layer before FCN)
+3. Upsampling
+4. Segmentation
 
-  ![](fcn_imgs/receptive_field.png)
+## Receptive field
 
-## Convnet
+The receptive field is **_a portion of sensory space_** that can elicit neuronal responses when stimulated. ([wiki](https://en.wikipedia.org/wiki/Receptive_field), Alonso and Chen(2008))
 
-- Translation invariance
+<img src="fcn_imgs/receptive_field.png" width=50%>
 
+## What is Convnet
+
+### Basic components
+
+1. Convolution
+2. Pooling
+3. Activation function
+
+operate on local input region
+
+### Convnet is built on translation invariance
+
+Invariance is important in detection part of AI.
+
+- Type of invariance  
   ![](fcn_imgs/translation_invariance.png)
 
-- Basic components
+### Depend only on relative spatial coordinates
 
-  1. Convolution
-  1. Pooling
-  1. Activation function
+**_Convolution_**
 
-  operate on local input region
+$$
+y_{ij} = f_{ks}(\{x_{si+\delta i, sj+\delta j}\}_{0 \le \delta i, \delta j \le k})
+$$
 
-- Depend only on relative spatial coordinates
+$k$ : kernel size  
+$s$ : stride  
+$f_{ks}$ : layer type (conv, pool, activate)
 
-  $$
-  y_{ij} = f_{ks}(\{x_{si+\delta i, sj+\delta j}\}_{0 \le \delta i, \delta j \le k})
-  $$
-
-  $k$ : kernel size
-  $s$ : stride
-  $f_{ks}$ : layer type
-
-- Transformation rule
-
-  $$
-  f_{ks} \circledast g_{k's'} = (f \circledast g)_{k' + (k-1)s', ss'}
-  $$
+**_Transformation rule_**
 
 Therefore, general deep net computes a general nonlinear function.
 
-- Loss function
+$$
+f_{ks} \circ g_{k's'} = (f \circ g)_{k' + (k-1)s', ss'}
+$$
 
-  defines a task.
+**_Loss function which defines a task._**
 
-  $$
-  l(x;\theta) = {\Sigma}_{ij} l'(x_{ij};\theta)
-  $$
+Custom-made loss function called Pixel-Wise Loss.
 
-# 3.1. Adapting classifiers for dense prediction
+$$
+l(x;\theta) = {\Sigma}_{ij} l'(x_{ij};\theta)
+$$
+
+# 3.1. Adapting classifiers for dense prediction <!-- What is the different with feature extraction -->
 
 ## How to change fc-layer to conv layer
 
 ### Typical recognition nets
+
+![](fcn_imgs/cnn_fc_layer.png)
 
 1. Take fixed-sized inputs
 1. Produce nonspatial outputs
@@ -217,7 +254,7 @@ $$
 
 ### Shift-and-stitch trade-off
 
-|                 pros.                 |                 cons.                 |
+|                 pros                  |                 cons                  |
 | :-----------------------------------: | :-----------------------------------: |
 | denser w/o decreasing receptive field | can't finer scale than their original |
 
@@ -243,7 +280,7 @@ If not pooling, we don't have to reproduce.
 
 ## Bilinear interpolation
 
-reference 3.2. Interpolaration
+reference [3.2. Interpolaration](#few-years-ago-inpterpolation)
 
 ## Backward convolution (Deconvolution)
 
@@ -254,23 +291,32 @@ Thus, end-to-end learning is possible.
 Moreover, deconvolutional filter could learn any effective upsampling.  
 e.g. bilinear upsampling, non-linear upsampling, etc...
 
-In this article, they find optimized upsampling layer which is in Section 4.2.
+### Transposed Convolution Matrix
+
+How upsample a small size image with learnable parameters.  
+First, let redraw image of convolution as a below figure.
+
+<img src="fcn_imgs/conv_reshaped.png" width=80%>
+
+Then, we can transpose the matrix for up-convolution.
+
+<img src="fcn_imgs/conv_transposed.png" width=50%>
+
+In this article, they find more optimized upsampling layer which is in [Section 4.2.](#42-combining-what-and-where)
 
 # 3.4. Patchwise training is loss sampling
 
-## Sthocastic optimization
+## Stochastic optimization
 
 Focus on Computational efficiency
 
-Patchwise training : Uniform vs. Random sample patch  
+Patchwise training : Uniform (no sample) vs. Random sample patch  
 Random sample is more efficient than uniform sampling of patches, because of reducing # of possible batches.
 
-In addition, it is loss sampling which has the effect like DropConnect mask.  
+In addition, it is loss sampling which has the effect **_like DropConnect mask._**  
 DropConnect, dropout은 하나 또는 몇 개의 노드에 결과값이 너무 많이 의존하는 것을 방지하도록 하여 이미지 인식 성능 개선에 도움을 준다.
 
 ![](fcn_imgs/dropout_dropconnect.png)
-
-_But, what random sample? (Gaussian? uniform? ...)_
 
 # Segmentation Architecture
 
@@ -279,11 +325,11 @@ _But, what random sample? (Gaussian? uniform? ...)_
 1. Fine-tuning
 2. Skip architecture
 
-## What is trained
+## What is trained and validated
 
 1. A per-pixel multinomial logistic loss
-2. Validate with mean pixel Intersection over Union (IoU)
-3. Mean taken over all classes, including background
+2. Validate with mean pixel Intersection over Union (IoU, the mean taken over all classes, including background)
+3. The training ignores pixels that are masked out in the ground truth.
 
 # 4.1. From classifier
 
@@ -500,7 +546,7 @@ SIFT Flow is a dataset of 2,688 images with pixel labes.
 
 ## Future works
 
-If combination with Multi-resolution layer, the Fully convolutional networks improves dramatically in segmentation part, while simplifying and speeding up learning and inference.
+If combination with Multi-resolution layer, the Fully Convolutional Networks improves dramatically in segmentation part, while simplifying and speeding up learning and inference.
 
 # A. Upper Bounds on IU
 
