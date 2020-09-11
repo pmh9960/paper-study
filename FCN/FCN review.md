@@ -71,7 +71,7 @@ Pixel 단위로 어떤 object인지 classification 하는 것.
 1. Input size가 자유롭다.
 2. 학습과 추론 모두 전체 사진을 한 번에 계산하였다. (by [dense feedforward computation](#fully-connected-layers-can-also-be-viewed-as-convolutions-with-kernels-that-cover-their-entire-input-regions))
 3. 본 네트워크에 있는 upsampling layers가 subsampled하는 pooling이 있음에도, pixelwise prediction과 학습 모두 가능하게 해준다.
-4. Efficiency <!-- TODO for what? -->  
+4. Efficiency
    For what ? Train ? Inference ? Build architecture ?
    1. [Asymptotically efficient](<https://en.wikipedia.org/wiki/Efficiency_(statistics)#Asymptotic_efficiency>) and absolutely efficient (정확한 뜻은 모르겠다.) <!-- Asymtotically : N이 커진다던지 무언가 변화가 있을 것임. 이 때 이 변화에 따라서 서서히 최적의 값으로 접근한다면 해당된다.  -->
    2. No patchwise training
@@ -109,7 +109,7 @@ Architecture design vs. Dense prediction tradeoff
 
 ## Dense prediction
 
-It is called dense prediction, because pooling subsample images. <!-- TODO is it right? -->
+It is called dense prediction, because pooling subsample images.
 
 - Ning, Farabet, Pinheiro and Collobert : Recent works have applied convnets to dense prediction problems, including semantic segmentation.
 - Ciresan : boundary prediction for electron microscopy
@@ -329,7 +329,7 @@ DropConnect, dropout은 하나 또는 몇 개의 노드에 결과값이 너무 �
 
 1. A per-pixel multinomial logistic loss
 2. Validate with mean pixel Intersection over Union (IoU, the mean taken over all classes, including background)
-3. The training ignores pixels that are masked out in the ground truth.
+3. The training ignores pixels that are masked out in the ground truth. (모호하거나 어려운 것은 무시)
 
 # 4.1. From classifier
 
@@ -347,8 +347,7 @@ The predict coarse output layer followed by a deconvolution layer. (bilinear... 
 
 ### Preliminary validation results
 
-Even the worst model achieved $\sim 75\%$  
-FCN-VGG16 already appears 56.0 mean IU
+Even the worst model achieved $\sim 75\%$, and FCN-VGG16 already appears 56.0 mean IU
 
 ![](fcn_imgs/sample_iou.png)
 
@@ -402,7 +401,8 @@ Just upsample `conv7` 32x.
 
 ### why?
 
-There is not significant result.
+There is not significant result.  
+The number of parameters would be too many to be learned with limited images. (I think)
 
 ## Notice point on FCN architecture
 
@@ -488,7 +488,7 @@ All models are trained and tested with **_Caffe_**
 
 # 5. Results
 
-## Datasets <!-- TODO what are they -->
+## Datasets
 
 1. PASCAL VOC
 2. NYUDv2
@@ -513,8 +513,9 @@ $t_i = \Sigma_j n_{ij}$ : the total number of pixels of class $i$
 
 ## Results of PASCAL VOC
 
-![](fcn_imgs/fcn_table3.png)
-![](fcn_imgs/fcn_figure6.png)
+<img src="fcn_imgs/fcn_table3.png" width=70%>
+
+<img src="fcn_imgs/fcn_figure6.png" width=70%>
 
 ## Results of NYUDv2
 
@@ -523,11 +524,10 @@ The images in NYUDv2 are RGB-D images. However, FCN-32s, 16s, 8s are trained wit
 1. Train unmodified FCN-32s model on RGB images.
 2. Upgrade input dimension of the model and train on RGB-D images.
 
-![](fcn_imgs/fcn_table4.png)
+<img src="fcn_imgs/fcn_table4.png" width=70%>
 
 - HHA is an 3-dims encoding way which transform from RGB-D.
-- Training as _late fusion_ of RGB and HHA
-- Both nets are summed at the final layer
+- Training as _late fusion_ of RGB and HHA (Both nets are summed at the final layer)
 - Upgrade _late fusion_ to 16 stirde version
 
 ## Results of SIFT Flow
@@ -537,7 +537,7 @@ SIFT Flow is a dataset of 2,688 images with pixel labes.
 - 33 semantic categories ("bridge", "mountain", "sun" ... )
 - 3 geometric categories ("horizontal", "vertical", and "sky")
 
-![](fcn_imgs/fcn_table5.png)
+<img src="fcn_imgs/fcn_table5.png" width=70%>
 
 - This model performs as well on both tasks as two independent trained models.
 - Learning and inference speeds are as fast as each independent models.

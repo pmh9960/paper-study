@@ -39,8 +39,6 @@ Obviously, the strategy in Ciresan et al. has two drawbacks
    > Larger patch require more max-pooling layers which reduce the location information.  
    > Smaller patch allow the network to see only little context.
 
-# U-Net
-
 ## Fully Convolutional Network
 
 U-Net is built upon **_Fully Convolutional Network._**  
@@ -67,6 +65,8 @@ Tiling strategy applys the network to large images, and also images' resolution 
 
 ## Data augmentation
 
+![](unet_imgs/elastic_deformation.ppm)
+
 If there is very little training data, data augmentation is important.  
 They apply elastic defromations to training images.  
 Elastic deformation is important in biomedical segmentation, because the tissue is well distorted.  
@@ -74,11 +74,13 @@ Dosovitskiy et al. suppose that the data augmentation help to learn invariance o
 
 ## Separation of touching objects of the same class
 
-Use of a weight loss, where the separating background labels between touching cells obtain a large weight in the loss function.
+Use of a **_weight loss_** where the separating background labels between touching cells obtain a large weight in the loss function.
 
-### This network is applicable to various biomedical segmentation problems
+**_This network is applicable to various biomedical segmentation problems._**
 
 # 2. Network Architecture
+
+![](unet_imgs/unet_figure1_path.png)
 
 U-Net consists of a contracting path, expansive path, and $1\times1$ convolution.  
 In total, the network has 23 convolutional layers.
