@@ -70,3 +70,148 @@ SS에 비해 proposal에 걸리는 시간이 10ms per image이고 전체 과정�
 
 Faster R-CNN은 frameworks로써 다른 분야에도 사용되었다. (e.g. 3D object detection, part-based detection, instance segmentation, and image captioning + commercial system)  
 Competition에도 Faster R-CNN 기반의 모델이 많이 사용되었다. 이 또한 cost-efficient 뿐 아니라 성능이 좋다는 것을 의미한다.
+
+# Faster R-CNN
+
+![](img/one_net_four_losses.png)  
+출처 : ICCV15 Training 'R-CNNs' of 'various' velocities
+
+1. Deep fully convolutional network
+2. Fast R-CNN detector
+
+RPN이 Fast R-CNN에게 어디를 보라고 할 지 알려주는 일종의 'attention' mechanism 처럼 작용한다.
+
+## Region Proposal Networks
+
+### 가장 궁극적인 목적은 Fast R-CNN object detection network와 computation을 공유하는 것 입니다.
+
+Convolutional layers를 공유할 수 있다고 생각하여 진행하였다.
+
+Zeiiler and Fergus model (ZF) : 5 layers  
+Symonyan and Zisserman model (VGG-16) : 13 layers  
+들을 공유할 수 있었다.
+
+공유한 후에는 마지막 convolutional layer에 대해서 3X3 convolution을 진행한다. (same padding, large receptive를 갖게 된다.)  
+Convolution으로 나온 feature map에서 box-regression(reg)과 box-classification(cls)으로 나누어 들어간다.  
+이 각각의 부분에서는 1X1 convolution을 진행하여 anchors 개수와 비례하는 채널 수를 가진 feature map을 만든다.
+
+### Anchors
+
+![](img/figure_3_left.png)
+
+reg layer와 cls layer로 나누어져 있는데 이를 벡터로 표현해보면 다음과 같다.
+
+$$
+reg = \begin{bmatrix} b_x \\ b_y \\ b_w \\ b_h \end{bmatrix} \\
+cls = \begin{bmatrix} \text{object} \\ \text{not object} \end{bmatrix}
+$$
+
+Anchor box 하나 당 위와 같은 개수의 값이 존재 해야 하므로, Figure 3과 같이 각각 2k, 4k개의 parameter가 존재해야 한다.  
+여기서는 문제를 단순화 하기 위해서 anchor box 하나 당 cls를 2개만 주었다.
+
+### Why anchor?
+
+![](img/figure_1.png)
+
+1. 입력 이미지의 사이즈를 다양하게 한다.
+   : 전체 과정을 N번 되풀이 하므로 시간 소요가 심하다.
+2. 필터의 크기를 다양하게 한다.
+   : 일반적으로 1번과 같이 쓰인다.
+3. Anchor (Pyramid of anchors)
+
+### Anchor의 장단점
+
+이미지나 feature map이 단일 scale이어야만 한다.  
+**_하지만, 확장을 위환 추가 cost없이 sharing features를 이용할 수 있어서 computation cost가 매우 절약된다._**
+
+## Loss function
+
+![][rcnn architecture with loss]  
+출처 : Achraf KHAZRI - medium
+
+Faster R-CNN에는 총 4개의 loss가 있다. RPN에 cls, reg 두 개, Fast R-CNN의 말단에 있는 cls, reg 두 개 존재한다.  
+이 떄문에 학습하는 방식이 다소 독특하다.
+
+$$
+L(\{p_i\}, \{t_i\}) = {1 \over N_{cls}} \sum_i L_{cls}(p_i, p^*_i) + \lambda {1 \over N_{reg}} \sum_i L_{reg}(t_i, t^*_i)
+$$
+
+Fast R-CNN의 loss와 굉장히 비슷한 것을 알 수 있다. ($L_{cls}, L_{reg}$은 실제로 동일하고, \*는 ground truth)  
+이 때, $N_{cls} = 256, N_{reg} \sim 2,400$로 나눠줬는데, 이후 $\lambda$를 10으로 설정해주어서 classification과 regression의 가중치를 같도록 맞춰주었다. (Fast는 하나에 대한 것이었어서 $N$으로 나눠주지도 않고 $\lambda$도 1이었다.)
+
+Bounding box regression에 사용되는 $t$와 $t^*$는 다음과 같다.  
+![](img/bbr_notation.png)
+
+이 수식들을 보면 알 수 있듯이, 하나의 ground-truth box는 여러 개의 anchors에 positive label을 줄 수 있고 각각에 loss를 전해줄 수 있다.
+
+### Training RPNs
+
+Positive sample과 Negative sample의 비율을 맞춰준다. (왜?)
+
+새로운 layers은 Gaussian distribution(0,0.01)으로 initialize 해주고 shared convolutional layers등은 ImageNet classification으로 학습된 parameter로 initialize 해준다.  
+ZF net은 전체 네트워크를 fine-tune하였고, VGG-16 net은 conv3_1 이후의 layers만 fine-tune 해 주었다.
+
+## Sharing Features of RPN and Fast R-CNN
+
+독립적으로 학습된 RPN과 Fast R-CNN은 shared convolutional layers를 서로 다른 방향으로 수정할 것이다. 이를 위해 세 가지 기법을 개발하였다.
+
+### Alternating training
+
+1. RPN을 먼저 학습 시킨다.
+2. RPN에서 나온 proposals로 Fast R-CNN을 학습 시킨다.
+3. 이 과정을 반복한다.
+
+### Approximate joint training
+
+<img src="img/figure_2.png" width=60%>
+
+위 사진처럼 RPN과 Fast R-CNN을 연결한다.  
+Backpropagation을 진행할 때, RPN과 Fast R-CNN 둘 다 shared convolutional layers에 backpropagation으로 영향을 준다.  
+하지만 완벽한 joint는 아닌 것이, bounding box regression은 학습을 해도 proposal 박스의 좌표를 미분한 값은 무시한다.
+
+### Non-approximate joint training
+
+박스 좌표를 미분하기 위해서는 RoI Pooling 층이 필요하다. 이를 위해서 RoI warping이 필요한데 이는 이번 논문의 범위에서 벗어난다.
+
+### 4-step Alternating Training
+
+1. RPN을 ImageNet-pre-trained model을 이용하여 region proposal task로 fine-tune한다.
+2. 1번에서 학습한 RPN으로 나온 proposal로 Fast R-CNN을 학습한다.  
+   이 때 까지는 두 networks가 convolutional layers를 공유하지 않고 있다.
+3. Detector(?) network를 이용하여 RPN의 학습을 초기화시킨다. 하지만 이제 shared convolutional layers는 고정시키고 RPN 만을 학습시킨다.  
+   이제 두 networks는 convolutional layers를 공유한다.
+4. 마지막으로 shared convolutional layers와 RPN을 고정시키고 Fast R-CNN만을 학습시킨다.
+
+앞서 언급한 비슷한 Alternating training은 좀 더 반복한다. 하지만 반복해도 크게 달라지지 않는다는 것을 관측하였다고 한다.
+
+## Implementation details
+
+Details가 많아 중요한 부분만 요약하자면
+
+1. 본 network는 Fast R-CNN과 마찬가지로 단일 scale에 대해서만 학습한다.  
+   이를 위해 항상 짧은 변의 길이를 600pixel로 맞추었다.  
+   Multi-scale보다 정확도는 떨어지지만 speed-accuracy trade-off 면에서 효율적이지 못하다.
+2. Anchor box는 $128^2, 256^2, 512^2$의 크기이고 종횡비는 $1:1, 1:2, 2:1$로 총 가능한 경우는 9가지이다.  
+   이는 세심하게 정한 것은 아니지만 후에 결과를 보면 성능이 좋다.
+3. 이 알고리즘에서는 reception field보다 큰 물체도 검출이 가능하다.  
+   물체의 중심만 봐도 무슨 물체일지 예측할 수 있다는 점을 고려했을때 말이 된다.
+4. 학습 시에는 모든 cross-boundary anchors(?)를 무시한다.  
+   Cross-boundary anchors는 굉장히 유의해야 한다고 한다. Outlier이기 때문에 해당 object에 대해 학습이 어렵게 만들고 수렴하지 않게 한다.  
+   이에 따라 무시하게 된다면 대략 20,000개의 anchors가 6,000개로 준다.
+5. 몇몇 RPN proposals는 서로 많이 겹친다. 이를 방지하기 위해서 Non-Maximum Suppression(NMS)을 사용한다.  
+   IoU > 0.7만 남겨두도록하면 대략 2,000개의 proposals가 남는다.  
+   NMS이후 이 중 상위 N개만 남아서 Fast R-CNN에 넣는다. (Fast R-CNN은 본래 2,000개의 proposals로 훈련하였는데 실제 테스트를 할 때는 proposals의 수가 달라지게 되는 것이다.)
+
+# Experiments
+
+잘 실험 했다.
+
+# Conclusion
+
+Region proposal 생성에 보다 효율적이고 정확한 RPNs를 보여주었다.  
+Sharing convolutional features를 이용하여 region proposal 단계를 거의 cost-free로 거칠 수 있게 되었다.  
+따라서 통합된 deep-learning-based object detection system을 만들었고 near real-time frame rates 수준에 이르렀다.
+
+<!-- reference -->
+
+[rcnn architecture with loss]: https://miro.medium.com/max/700/1*Fg7DVdvF449PfX5Fd6oOYA.png
