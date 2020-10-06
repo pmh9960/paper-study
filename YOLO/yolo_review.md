@@ -160,12 +160,46 @@ Non-maximal suppression을 post-processing으로 사용하여 2-3%의 mAP를 늘
 # 4. Experiments
 
 많은 기존 연구들은 일반적인 detection pipeline을 빠르게 만드는데 노력하였다.  
-이러한 연구들 중에서는 real-time milestone이라고 할만한 것은 존재하지 않았다. (DPM 30Hz, 100Hz 제외하고는)  
+이러한 연구들 중에서는 real-time milestone이라고 할만한 것은 존재하지 않았다. (DPM 30Hz, 100Hz 제외하고는. 하지만 이들은 정확도(mAP)가 처참하다.)  
 4.1.에서는 YOLO와 real-time detector, less than real-time detector를 비교해보았다.
 
 ## 4.1. Comparison to Other Real-Time Systems
 
-![](img/table1.png)
+Fast YOLO는 PASCAL에서 가장 빠른 object detection method이다. 그럼에도 mAP를 유지하여 이전의 real-time 모델보다 두배의 정확도를 유지하였다. (52.7%) <!-- 표기를 어떻게 하나 ? 52.7% ? mAP 52.7 ? 52.7 mAP ? -->  
+VGG-16 기반 YOLO는 더 정확하지만 속도가 real-time 보다 느리다. 본 논문은 속도에 초점을 맞췄기 때문에 선택하지 않았다. (real-time의 기준은 무엇인가 ? 30fps ?)
+
+<img src="img/table1.png" width=50%>
+
+- Fastest DPM은 속도를 위해 정확도를 희생했는데 그럼에도 불구하고 real-time performance보다 두배가량 느리다.
+- R-CNN minus R은 Selective search를 static bounding box proposals로 바꾼 모델인데 real-time에는 실패했고 proposal을 포기하여 정확도도 낮다.
+- Fast R-CNN은 R-CNN에서 속도를 많이 개선하였고 정확도도 높지만 Selective search를 사용하고 있기 때문에 속도가 0.5fps 밖에 나오지 않는다.
+- Faster R-CNN은 Selective search를 neural network로 교체하여 속도를 굉장히 개선하였는데 그럼에도 속도가 느리다.
+  - Faster R-CNN ZF에서 정확도를 포기하여 18fps를 얻었고 VGG-16을 사용하면 10 mAP가 높아지지만 속도가 7fps이다. 각각 YOLO보다 2.5, 6배가량 느리다.
+
+## 4.3. Combining Fast R-CNN and YOLO
+
+<img src="img/figure4.png" width=50%>
+
+위 그래프를 보면 알 수 있듯이 YOLO는 R-CNN보다 background mistake가 훨씬 적다.  
+이 점을 바탕으로 두 모델을 결합한다면 Fast R-CNN이 보다 발전할 수 있다.
+
+R-CNN이 predict 한 bounding box에 대해서 YOLO가 비슷한 box를 predict 했는지 알아보고, 만약 predict 하였다면 해당 prediction에 가산점을 주는 방식으로 앙상블을 진행한다.  
+아래는 그 결과이다. Fast R-CNN의 여러 버젼의 모델에서 실험해보았는데 가장 정확한 Fast R-CNN에 YOLO를 combine한 모델이 기존 모델보다 3.2% 높여 가장 높은 mAP인 75.0%를 보였다.
+
+<img src="img/table2.png" width=50%>
+
+이보다 더 높은 정확도 증가를 가지지 못한 이유는 background error를 고친 대신 다른 종류의 mistake가 발생했기 때문이다.
+
+# 5. Real-Time Detection In The Wild
+
+YOLO가 굉장히 빠르고 정확하여 웹캠에 연결하여 실험해보았다. Real-time 으로 interactive 하게 잘 작동하였다.  
+http://pjreddie.com/yolo/ 에서 확인할 수 있다.
+
+# 6. Conclusion
+
+Object detection을 위한 unified model YOLO를 소개하였다.  
+YOLO는 만들기 쉽고 전체 이미지로 바로 학습할 수 있으며 전체 모델이 연결되어 한 번에 학습할 수 있다.  
+YOLO는 현재 나온 object detection model들과 비교했을 때 빠르고 정확하며, 새로운 도메인으로 잘 일반화되어 빠르고 강력한 object detection에 문제에 대해서 이상적이다.
 
 <!-- reference -->
 
