@@ -10,10 +10,9 @@
 ## Contribution
 
 0. Attention mechanism만을 이용한 Transformer 모델 제안.
-1. Input과 output간의 global dependencies를 이용하기 위해서 Recurrence를 피하고 attention mechanism만을 이용하였다.
-2. Parallelization이 크게 높아져서 속도 향상에 도움이 되었다.
-3. 높은 translation quality를 가졌음에도 학습 또한 효율적이다. (8개의 GPU로 12시간만 학습하였다.)
-<!-- TODO Self attention도 들어가지 않나 ? -->
+1. Input과 output간의 global dependencies를 이용할 수 있다. (Attention mechanism)
+2. Parallelization이 크게 높아져서 속도 향상에 도움이 되었다. (Self-Attention)
+3. Self-Attention을 이용하여 문장 내 단어들 간의 관계를 거리에 관계 없이 학습할 수 있다.
 
 # 1 Introduction
 
@@ -164,8 +163,7 @@ $$
   $\Rightarrow Q : |Q|\times d_{model}, K : |K|\times d_{model}, V : |V|\times d_{model}$
 - **Input Projection matrices:** $W_i^Q\in\mathbb{R}^{d_{model}\times d_k}, W_i^K\in\mathbb{R}^{d_{model}\times d_k}, W_i^V\in\mathbb{R}^{d_{model}\times d_v}$
 - **Output projection matrix:** $W^O\in\mathbb{R}^{hd_v\times d_{model}}$
-- **$d_k=d_v=d_{model}/h$:** $h$개의 head로 나뉘어져서 연산하였기 때문에, 전체 computational cost는 전체 차원을 이용한 single-head일 때와 비슷하다. (하지만 병렬 처리가 가능함! _이러면 cost가 비슷한게 아니라 $h$배 더 싼거 아닌가?_)
-<!-- TODO computational cost의 정의? 병렬처리해서 속도가 빠른건 cost가 줄었다고 표현하지 않는가? -->
+- **$d_k=d_v=d_{model}/h$:** $h$개의 head로 나뉘어져서 연산하였기 때문에, 전체 computational cost는 전체 차원을 이용한 single-head일 때와 비슷하다. (하지만 병렬 처리가 가능함!)
 
 ## 3.2.3 Application of Attention in our Model
 
