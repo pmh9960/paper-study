@@ -1,4 +1,0 @@
-{
-    "python.pythonPath": ".venv\\python.exe",
-    "python.formatting.provider": "black"
-}
