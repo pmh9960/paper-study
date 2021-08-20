@@ -1,3 +1,3 @@
 # paper-study
 
-personal paper study list (include markdown or ppt)
+personal paper study list (includes markdown or ppt)
