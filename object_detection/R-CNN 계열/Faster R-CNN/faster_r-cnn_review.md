@@ -5,7 +5,7 @@ Shaoqing Ren,
 He(SPPNet), Ross(R-CNN)이 2, 3 저자로 참여  
 출처 :
 
-1. [Faster R-CNN 원문](1506.01497.pdf)
+1. [Faster R-CNN 원문](https://arxiv.org/abs/1506.01497)
 2. [갈아먹는 머신러닝](https://yeomko.tistory.com/17)
 
 ### Contribution

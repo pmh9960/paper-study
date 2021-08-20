@@ -1,5 +1,6 @@
 # VGG16
 
+https://arxiv.org/abs/1409.1556
 [VGG16 논문 리뷰 -강준영](https://medium.com/@msmapark2/vgg16-%EB%85%BC%EB%AC%B8-%EB%A6%AC%EB%B7%B0-very-deep-convolutional-networks-for-large-scale-image-recognition-6f748235242a)
 
 # Topic

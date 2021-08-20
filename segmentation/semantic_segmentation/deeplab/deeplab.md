@@ -4,7 +4,7 @@
 Liang-Chieh Chen
 
 출처 :
-Deeplab paper [v1](v1/1412.7062.pdf), [v2](v2/1606.00915.pdf), [v3](v3/1706.05587.pdf), [v3+](v3+/1802.02611.pdf)  
+Deeplab paper [v1](https://arxiv.org/abs/1412.7062), [v2](https://arxiv.org/abs/1606.00915), [v3](https://arxiv.org/abs/1706.05587), [v3+](https://arxiv.org/abs/1802.02611)  
 [Efficient Inference in Fully Connected CRFs with Gaussian Edge Potentials](v2/Fully%20Connected%20CRFs/fall2016_slide15.pdf)
 
 ### Contribution

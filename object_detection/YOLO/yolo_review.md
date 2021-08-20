@@ -6,7 +6,7 @@ You Only Look Once: Unified, Real-Time Object Detection
 
 출처 :
 
-1. [YOLO 원문](1506.02640.pdf)
+1. [YOLO 원문](https://arxiv.org/abs/1506.02640)
 2. TAEU [blog][taeu blog]
 3. deepsystem.io [ppt][deepsystem.io ppt]
 
